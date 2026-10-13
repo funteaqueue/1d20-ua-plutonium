@@ -1,0 +1,52 @@
+{
+    "id": "1d20-ua-plutonium",
+    "title": "1d20.com.ua — Український переклад для Plutonium",
+    "description": "Український переклад: 1d20.com.ua. Підміняє назви та описи заклять, предметів, рис, додаткових особливостей, передісторій і рас українським перекладом з 1d20.com.ua під час імпорту через Plutonium. Також дозволяє вставляти (Ctrl+V) посилання з 5e.tools над аркушем персонажа або бічною панеллю, щоб імпортувати їх одразу.",
+    "version": "0.1.0",
+    "authors": [
+        {
+            "name": "Fantik"
+        }
+    ],
+    "compatibility": {
+        "minimum": "14",
+        "verified": "14"
+    },
+    "relationships": {
+        "systems": [
+            {
+                "id": "dnd5e",
+                "type": "system",
+                "compatibility": {
+                    "minimum": "5.0.0"
+                }
+            }
+        ],
+        "requires": [
+            {
+                "id": "plutonium",
+                "type": "module",
+                "manifest": "https://raw.githubusercontent.com/TheGiddyLimit/plutonium-next/master/module-foundry14.json",
+                "reason": "Translations are applied to documents imported by Plutonium; the paste-to-import feature uses its importer API."
+            }
+        ]
+    },
+    "esmodules": [
+        "scripts/module.js"
+    ],
+    "styles": [
+        "styles/1d20-ua-plutonium.css"
+    ],
+    "languages": [
+        {
+            "lang": "en",
+            "name": "English",
+            "path": "lang/en.json"
+        },
+        {
+            "lang": "uk",
+            "name": "Українська",
+            "path": "lang/uk.json"
+        }
+    ]
+}

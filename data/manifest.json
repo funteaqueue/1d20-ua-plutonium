@@ -1,0 +1,54 @@
+{
+  "format": 1,
+  "generated_at": "2026-10-12T22:22:33+00:00",
+  "home": "https://1d20.com.ua",
+  "base": "https://1d20.com.ua/wp-json/dnd/v1/data",
+  "attribution": "Український переклад: 1d20.com.ua",
+  "index": {
+    "bestiary": {
+      "file": "index/bestiary.json",
+      "bytes": 2362378,
+      "count": 4560,
+      "sha1": "25fcb5021b4e121a651443e23b0b0ae421b77cac"
+    }
+  },
+  "uk": {
+    "spells": {
+      "file": "uk/spells.json",
+      "bytes": 1821598,
+      "count": 969,
+      "sha1": "fa8f4723cceb743f66f4e2c0bd0bad42ce4925d6"
+    },
+    "items": {
+      "file": "uk/items.json",
+      "bytes": 8228451,
+      "count": 5885,
+      "sha1": "a5fcfe790ba8953fd694f315755d48dc922447db"
+    },
+    "feats": {
+      "file": "uk/feats.json",
+      "bytes": 526406,
+      "count": 305,
+      "sha1": "6dabb393fa287b10daa6cb77981b3098656dfaa2"
+    },
+    "optionalfeatures": {
+      "file": "uk/optionalfeatures.json",
+      "bytes": 207124,
+      "count": 221,
+      "sha1": "98a403d67c34744cd375bf421f6dab12e0dfb6de"
+    },
+    "backgrounds": {
+      "file": "uk/backgrounds.json",
+      "bytes": 1080600,
+      "count": 171,
+      "sha1": "5b83645da9ddec30da52acd808c5ea1a8122727a"
+    },
+    "races": {
+      "file": "uk/races.json",
+      "bytes": 512700,
+      "count": 161,
+      "sha1": "2a99ededaf6a6bd9c2dfc9aa356ee4ed165af847"
+    }
+  },
+  "version": "a64f011725f3"
+}
