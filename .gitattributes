@@ -1,2 +1,3 @@
 # Preserve upstream data bytes so manifest SHA-1 checks survive checkout.
 data/** -text
+*.pdf binary

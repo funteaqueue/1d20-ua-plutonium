@@ -6,13 +6,15 @@
 
 ## Встановлення
 
+**[Покрокова інструкція зі скріншотами та стрілками](docs/installation.uk.md)** · **[Завантажити PDF](output/pdf/installation-uk.pdf)**
+
 Потрібні Foundry VTT 14 та система dnd5e. На екрані налаштування Foundry відкрийте **Add-on Modules → Install Module**, вставте в **Manifest URL**:
 
 ```text
 https://raw.githubusercontent.com/funteaqueue/1d20-ua-plutonium/main/module.json
 ```
 
-Натисніть **Install** і погодьтеся встановити Plutonium та його залежності, якщо їх ще немає. Потім увімкніть модулі у світі через **Manage Modules**. Партнерський ключ для користування модулем не потрібен — переклади вже включено.
+Натисніть **Install** і погодьтеся встановити Plutonium та його залежності, якщо їх ще немає. Потім увімкніть модулі у світі через **Settings → Module Management**. Партнерський ключ для користування модулем не потрібен — переклади вже включено.
 
 ## Використання
 
