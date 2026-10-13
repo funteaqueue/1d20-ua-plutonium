@@ -6,7 +6,7 @@
 
 ## Встановлення
 
-**[Інструкція зі скріншотами](docs/installation.uk.md)** · **[PDF](output/pdf/installation-uk.pdf)**
+**[Інструкція зі скріншотами](docs/installation.uk.md)**
 
 1. На стартовому екрані Foundry відкрийте **Add-on Modules → Install Module**.
 2. Вставте посилання для своєї версії в **Manifest URL** та натисніть **Install**.
