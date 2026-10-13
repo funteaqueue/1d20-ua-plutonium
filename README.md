@@ -8,13 +8,32 @@
 
 **[Покрокова інструкція зі скріншотами та стрілками](docs/installation.uk.md)** · **[Завантажити PDF](output/pdf/installation-uk.pdf)**
 
-Потрібні Foundry VTT 14 та система dnd5e. На екрані налаштування Foundry відкрийте **Add-on Modules → Install Module**, вставте в **Manifest URL**:
+Виберіть збірку для своєї версії Foundry. Обидві містять ті самі переклади та функції, але підключають відповідну версію Plutonium.
+
+| Foundry | Система | Маніфест для встановлення |
+|---|---|---|
+| **14** | dnd5e, сумісна з Plutonium для v14 | [module.json](https://raw.githubusercontent.com/funteaqueue/1d20-ua-plutonium/main/module.json) |
+| **13** | **dnd5e 5.3.x** | [module-foundry13.json](https://raw.githubusercontent.com/funteaqueue/1d20-ua-plutonium/main/module-foundry13.json) |
+
+Це дві збірки одного модуля з однаковим ID; установлюйте лише збірку для своєї версії Foundry. Збірка для v13 обмежена Foundry 13 і не оновлюється автоматично до збірки v14. Після переходу на Foundry 14 перевстановіть модуль за маніфестом v14.
+
+На екрані налаштування Foundry відкрийте **Add-on Modules → Install Module**, вставте в **Manifest URL** потрібне посилання.
+
+**Foundry 14:**
 
 ```text
 https://raw.githubusercontent.com/funteaqueue/1d20-ua-plutonium/main/module.json
 ```
 
+**Foundry 13:**
+
+```text
+https://raw.githubusercontent.com/funteaqueue/1d20-ua-plutonium/main/module-foundry13.json
+```
+
 Натисніть **Install** і погодьтеся встановити Plutonium та його залежності, якщо їх ще немає. Потім увімкніть модулі у світі через **Settings → Module Management**. Партнерський ключ для користування модулем не потрібен — переклади вже включено.
+
+Ілюстрована інструкція та PDF показують інтерфейс Foundry 14. Для Foundry 13 використовуйте посилання вище; кнопка керування модулями у світі може називатися **Manage Modules**. Якщо Plutonium уже встановлений, переконайтеся, що це збірка для вашої версії Foundry: залежність не замінює наявний Plutonium автоматично.
 
 ## Використання
 

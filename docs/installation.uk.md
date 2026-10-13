@@ -6,6 +6,8 @@
 
 Скріншоти зроблено у Foundry VTT 14.368. Інтерфейс іншою мовою може мати інші назви кнопок.
 
+**Для Foundry 13 є окрема збірка:** потрібна **dnd5e 5.3.x**, а в Manifest URL слід вставити `https://raw.githubusercontent.com/funteaqueue/1d20-ua-plutonium/main/module-foundry13.json`. Вона підключає Plutonium для v13. Наведені нижче скріншоти та PDF стосуються v14.
+
 ## Перед початком
 
 - Foundry VTT **14**, світ із системою **dnd5e** та доступ адміністратора до встановлення модулів.
