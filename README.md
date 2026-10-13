@@ -4,6 +4,18 @@
 
 Модуль для Foundry VTT (dnd5e), який імпортує контент через [Plutonium](https://5e.tools) звичайним Ctrl+V і вміє підміняти назву та опис українським перекладом з 1d20.com.ua.
 
+## Встановлення
+
+Потрібні Foundry VTT 14 та система dnd5e. На екрані налаштування Foundry відкрийте **Add-on Modules → Install Module**, вставте в **Manifest URL**:
+
+```text
+https://raw.githubusercontent.com/funteaqueue/1d20-ua-plutonium/main/module.json
+```
+
+Натисніть **Install** і погодьтеся встановити Plutonium та його залежності, якщо їх ще немає. Потім увімкніть модулі у світі через **Manage Modules**. Партнерський ключ для користування модулем не потрібен — переклади вже включено.
+
+## Використання
+
 Типова поведінка:
 
 - вставили посилання **5e.tools** (`https://5e.tools/spells.html#fireball_phb`) — імпортується англійський оригінал;

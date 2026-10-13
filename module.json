@@ -3,6 +3,9 @@
     "title": "1d20.com.ua — Український переклад для Plutonium",
     "description": "Український переклад: 1d20.com.ua. Підміняє назви та описи заклять, предметів, рис, додаткових особливостей, передісторій і рас українським перекладом з 1d20.com.ua під час імпорту через Plutonium. Також дозволяє вставляти (Ctrl+V) посилання з 5e.tools над аркушем персонажа або бічною панеллю, щоб імпортувати їх одразу.",
     "version": "0.1.0",
+    "url": "https://github.com/funteaqueue/1d20-ua-plutonium",
+    "manifest": "https://raw.githubusercontent.com/funteaqueue/1d20-ua-plutonium/main/module.json",
+    "download": "https://github.com/funteaqueue/1d20-ua-plutonium/archive/refs/tags/v0.1.0.zip",
     "authors": [
         {
             "name": "Fantik"
