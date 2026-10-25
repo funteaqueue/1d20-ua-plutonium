@@ -158,6 +158,59 @@ test('preflight detects a changed skill ability and reports differing totals wit
     await assert.rejects(prepareCharacterImport(data, h), /Характеристика athl/);
 });
 
+test('preflight accounts for native Jack of All Trades without writing half proficiency into base skills', async () => {
+    for (const systemVersion of ['5.3.3', '6.0.3']) {
+        const data = fixture(), h = harness(), make = h.makeActor;
+        // The site export can omit the bard feature from its calculated checks.
+        data.snapshot.mechanics.checks = {halfPb: false};
+        data.snapshot.skillRows.find(row => row.id === 'hist').expert = true;
+        data.snapshot.skillRows.find(row => row.id === 'anim').mod = 0;
+        const effect = {transfer: true, changes: [{key: 'flags.dnd5e.jackOfAllTrades', mode: 5, value: true}]};
+        const convert = h.adapter.convert;
+        h.adapter.classFeatures = async () => [{name: 'Jack of All Trades'}];
+        h.adapter.convert = async (...args) => {
+            const item = await convert(...args);
+            if (args[1].name === 'Jack of All Trades') item.effects = [structuredClone(effect)];
+            return item;
+        };
+        h.makeActor = source => {
+            const actor = make(source);
+            const enabled = source.items.some(item => item.effects?.some(e => e.transfer && e.changes?.some(c => c.key === 'flags.dnd5e.jackOfAllTrades' && c.value)));
+            actor.system.calculateAbilityCheckProficiency = (base, ability, options) => {
+                assert(source.system.skills[options.skill]);
+                assert.equal(source.system.skills[options.skill].ability, ability);
+                return {multiplier: enabled && base < 1 ? 0.5 : base};
+            };
+            for (const skill of Object.values(actor.system.skills)) if (enabled && skill.value < 1) {
+                skill.value = 0.5;
+                skill.total += 1;
+            }
+            return actor;
+        };
+        const out = await prepareCharacterImport(data, {...h, systemVersion});
+        assert.equal(out.source.system.skills.ani.value, 0);
+        assert.equal(out.source.system.skills.ath.value, 1);
+        assert.equal(out.source.system.skills.his.value, 2);
+        assert.equal(h.makeActor(out.source).system.skills.ani.value, 0.5);
+        assert(out.notes.some(note => note.includes('бонус Foundry 1, конструктор 0')));
+        assert.deepEqual(out.source.items.find(item => item.name === 'Jack of All Trades').effects, [effect]);
+    }
+});
+
+test('preflight still rejects unexplained proficiency changes and lost expertise', async () => {
+    for (const [key, value] of [['ani', 0.5], ['ath', 0], ['his', 1]]) {
+        const data = fixture(), h = harness(), make = h.makeActor;
+        data.snapshot.skillRows.find(row => row.id === 'hist').expert = true;
+        h.makeActor = source => {
+            const actor = make(source);
+            actor.system.calculateAbilityCheckProficiency = base => ({multiplier: base});
+            actor.system.skills[key].value = value;
+            return actor;
+        };
+        await assert.rejects(prepareCharacterImport(data, h), /Володіння/);
+    }
+});
+
 test('legacy repair changes only abilities of a single owned all-DEX import', async () => {
     const source = characterActorSource(fixture());
     for (const skill of Object.values(source.system.skills)) skill.ability = 'dex';
