@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import {buildCharacterPlan, characterImportIssues} from '../scripts/character-plan.js';
 import {matchCharacterEntity, createPlutoniumCharacterAdapter} from '../scripts/character-plutonium.js';
+import {usesFullSpellList, maximumClassSpellLevel, selectClassSpells} from '../scripts/character-spell-lists.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const plutonium = process.argv[2] ?? path.resolve(root, '../plutonium');
@@ -44,6 +45,29 @@ lists.spells = [];
 for (const result of await Promise.allSettled(Object.values(spellIndex).map(file => json(`spells/${file}`)))) {
     if (result.status !== 'fulfilled') throw result.reason;
     lists.spells.push(...result.value.spell ?? []);
+}
+// DataUtil.spell attaches these generated class memberships when loading spells.
+const spellSources = await json('generated/gendata-spell-source-lookup.json');
+for (const spell of lists.spells) {
+    const lookup = spellSources[spell.source.toLowerCase()]?.[spell.name.toLowerCase()];
+    for (const [from, to] of [['class', 'fromClassList'], ['classVariant', 'fromClassListVariant']]) {
+        const entries = [];
+        for (const [source, classes] of Object.entries(lookup?.[from] ?? {})) for (const [name, value] of Object.entries(classes)) {
+            const defined = value.definedInSources ?? [value.definedInSource];
+            entries.push(...defined.map(definedInSource => ({name, source, definedInSource})));
+        }
+        if (entries.length) { spell.classes ??= {}; spell.classes[to] = [...spell.classes[to] ?? [], ...entries]; }
+    }
+}
+const preparedLists = [];
+for (const entity of nativeClasses.filter(usesFullSpellList)) {
+    const level = ['Druid', 'Cleric'].includes(entity.name) ? 3 : 5;
+    const spells = selectClassSpells(lists.spells, {entity, level});
+    const maximum = maximumClassSpellLevel(entity, level);
+    assert(spells.length > 0, `${entity.name} ${entity.source}: empty spell list`);
+    assert(spells.every(spell => spell.level > 0 && spell.level <= maximum));
+    if (entity.name === 'Druid') assert(spells.some(spell => spell.name === 'Moonbeam' && spell.level === 2 && spell.source === entity.source));
+    preparedLists.push({class: `${entity.name}|${entity.source}`, level, maximum, spells: spells.length});
 }
 let builds = 0, spellSelections = 0;
 const unresolved = new Set();
@@ -100,5 +124,5 @@ for (const row of [...catalog.classes, ...catalog.subclasses]) {
 }
 delete globalThis.game; delete globalThis.DataLoader; delete globalThis.DataUtil;
 console.log(JSON.stringify({builds, classes: catalog.classes.length, levels: [1, 5, 11, 20], spellSelections,
-    catalogueIdentities: Object.fromEntries(['races', 'backgrounds', 'subclasses', 'subraces'].map(type => [type, catalog[type].length])), choiceChecks, unresolved: [...unresolved], unresolvedChoices}, null, 2));
+    catalogueIdentities: Object.fromEntries(['races', 'backgrounds', 'subclasses', 'subraces'].map(type => [type, catalog[type].length])), choiceChecks, preparedLists, unresolved: [...unresolved], unresolvedChoices}, null, 2));
 if (unresolved.size || unresolvedChoices.length) process.exitCode = 1;

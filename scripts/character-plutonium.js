@@ -3,6 +3,7 @@ import {hashKey, slugFor, find} from './data.js';
 import {buildUpdate, describeSource} from './translate.js';
 import {getTranslateMode} from './settings.js';
 import {characterSystemMajor} from './character-compat.js';
+import {selectClassSpells} from './character-spell-lists.js';
 
 const copy = value => structuredClone(value);
 const lower = value => String(value ?? '').toLowerCase();
@@ -63,6 +64,21 @@ export function createPlutoniumCharacterAdapter() {
         return copy(entity);
     };
     return {
+        async importedClass(item) {
+            const flags = item.flags?.[PLUTONIUM_ID];
+            if (!flags?.hash || !flags.source) throw new Error(`Клас «${item.name}» не має ідентифікатора Plutonium.`);
+            const entity = await DataLoader.pCacheAndGet('class', flags.source, flags.hash, {isRequired: true});
+            if (!entity) throw new Error(`Не знайдено клас «${item.name}».`);
+            return copy(entity);
+        },
+        async classSpellList(cls) {
+            const spells = (await list('spells.html')).filter(spell => {
+                if (globalThis.SourceUtil?.isNonstandardSource?.(spell.source)) return false;
+                const hash = hashKey(spell.name, spell.source);
+                return !globalThis.ExcludeUtil?.isInitialised || !ExcludeUtil.isExcluded(hash, 'spell', spell.source, {isNoCount: true});
+            });
+            return selectClassSpells(spells, cls, (spell, prop) => Renderer.spell.getCombinedClasses(spell, prop)).map(copy);
+        },
         async resolve(type, slug, reference, parent) {
             if (type === 'subraces' && reference?.data?.base) return copy(parent);
             const page = pages[type];
