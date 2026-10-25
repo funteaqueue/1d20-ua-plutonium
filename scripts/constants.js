@@ -26,6 +26,8 @@ export const PAGE_TO_TYPE = {
     'items.html': 'items',
     'feats.html': 'feats',
     'optionalfeatures.html': 'optionalfeatures',
+    classFeature: 'classfeatures',
+    subclassFeature: 'subclassfeatures',
     'backgrounds.html': 'backgrounds',
     'races.html': 'races'
 };
@@ -45,4 +47,4 @@ export const TYPE_TO_PAGE = {
 };
 
 /** Packs worth warming up in the background at ready, most-used first. */
-export const PRELOAD_TYPES = ['spells', 'feats', 'optionalfeatures', 'items'];
+export const PRELOAD_TYPES = ['spells', 'feats', 'optionalfeatures', 'classfeatures', 'subclassfeatures', 'items'];

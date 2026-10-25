@@ -1,13 +1,13 @@
 import {MODULE_ID, PLUTONIUM_ID, PAGE_TO_TYPE, ATTRIBUTION} from './constants.js';
 import {SETTINGS, getSetting, getTranslateMode} from './settings.js';
-import {hashKey, findLoaded, find, loadPack, getAttribution} from './data.js';
+import {hashKey, isFeaturePack, findLoaded, find, loadPack, getAttribution} from './data.js';
 
 /**
  * Apply 1d20.com.ua translations to documents Plutonium imports.
  *
  * Plutonium stamps flags.plutonium.{page, source, hash} on everything it creates,
- * and the hash is the 5etools "<name>_<source>" key — the same pair 1d20 uses for
- * its entries. The preCreateItem hook rewrites name and description before the
+ * and the hash is the 5etools name/source or composite feature key. The
+ * preCreateItem hook rewrites name and description before the
  * document hits the database when the pack is already in memory; otherwise the
  * pack is loaded and the item is patched right after creation (createItem).
  */
@@ -63,8 +63,9 @@ export function describeSource(doc) {
     const type = PAGE_TO_TYPE[flags.page];
     if (!type) return null;
 
-    const hash = typeof flags.hash === 'string' ? flags.hash.split(',')[0] : null;
-    const key = hash || (flags.source ? hashKey(doc.name, flags.source) : null);
+    const hash = typeof flags.hash === 'string' ? flags.hash.split(',')[0].toLowerCase() : null;
+    // Feature names alone are ambiguous across classes, levels and editions.
+    const key = hash || (!isFeaturePack(type) && flags.source ? hashKey(doc.name, flags.source) : null);
     if (!key) return null;
     return {type, key};
 }
@@ -165,6 +166,7 @@ export function buildUpdate(doc, entry, type) {
         ...doc.flags?.[MODULE_ID],
         nameEn: entry.name_en ?? originalName,
         source: entry.source,
+        ...(entry.uid ? {uid: entry.uid} : {}),
         slug: entry.slug,
         url: entry.url,
         original: {name: originalName, description: originalDescription}
@@ -244,7 +246,7 @@ export async function revertItem(item) {
     if (!original) return false;
     const update = {name: original.name};
     // Translation metadata shares this namespace with spell origins and custom resources.
-    for (const key of ['nameEn', 'source', 'slug', 'url', 'original']) update[`flags.${MODULE_ID}.-=${key}`] = null;
+    for (const key of ['nameEn', 'source', 'slug', 'url', 'uid', 'original']) update[`flags.${MODULE_ID}.-=${key}`] = null;
     if (original.description != null && item.system?.description !== undefined) {
         update['system.description.value'] = original.description;
     }

@@ -23,7 +23,7 @@ import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const BASE = 'https://1d20.com.ua/wp-json/dnd/v1/data';
-const UK_TYPES = ['spells', 'items', 'feats', 'optionalfeatures', 'backgrounds', 'races'];
+const UK_TYPES = ['spells', 'items', 'feats', 'optionalfeatures', 'backgrounds', 'races', 'classfeatures', 'subclassfeatures'];
 const INDEX_TYPES = ['bestiary'];
 
 const args = process.argv.slice(2);

@@ -7,7 +7,8 @@ import {getBaseUrl} from './settings.js';
  * The site publishes a manifest plus one JSON pack per entity type. Packs are large
  * (items ~8 MB), so each one is fetched once, stored in the browser's Cache Storage
  * under a key that includes its sha1 from the manifest, and parsed into an in-memory
- * index keyed the same way Plutonium keys its imports: 5etools hash "<name>_<source>".
+ * index keyed the same way Plutonium keys its imports: a 5etools name/source hash,
+ * or the full composite UID hash for class and subclass features.
  * A new manifest version therefore re-downloads only the packs whose sha1 changed.
  */
 
@@ -32,6 +33,25 @@ const state = {
 export function hashKey(name, source) {
     const encode = value => encodeURIComponent(String(value ?? '').toLowerCase()).toLowerCase();
     return `${encode(name)}_${encode(source)}`;
+}
+
+export const isFeaturePack = type => type === 'classfeatures' || type === 'subclassfeatures';
+
+/** Expand 5etools feature UID defaults before building its composite hash.
+ * Class source defaults to PHB; feature source defaults to its class/subclass
+ * source. Display text after the UID is not part of the identity. */
+export function featureHashKey(type, uid) {
+    if (!isFeaturePack(type) || typeof uid !== 'string') return null;
+    const fields = uid.split('|').map(value => value.trim());
+    const [name, className, rawClassSource] = fields;
+    const classSource = rawClassSource || 'PHB';
+    const subclass = type === 'subclassfeatures';
+    const level = fields[subclass ? 5 : 3];
+    if (!name || !className || !/^\d+$/.test(level ?? '') || (subclass && !fields[3])) return null;
+    const parts = subclass
+        ? [name, className, classSource, fields[3], fields[4] || 'PHB', Number(level), fields[6] || fields[4] || 'PHB']
+        : [name, className, classSource, Number(level), fields[4] || classSource];
+    return parts.map(value => encodeURIComponent(String(value).toLowerCase()).toLowerCase()).join('_');
 }
 
 /**
@@ -159,14 +179,23 @@ export function loadPack(type) {
     record.promise = (async () => {
         const manifest = await getManifest();
         const meta = manifest.uk?.[type];
+        // An older custom mirror may not yet publish the new feature packs.
+        // Missing translations must not block an otherwise valid character import.
+        if (!meta && isFeaturePack(type)) {
+            console.warn(`${MODULE_ID} | No ${type} pack in this data source; keeping original feature text.`);
+            record.index = new Map();
+            return record.index;
+        }
         if (!meta) throw new Error(`The 1d20 manifest has no "${type}" pack`);
 
         const pack = await fetchPackJson(state.base, meta);
         const index = new Map();
         const bySlug = new Map();
         for (const entry of pack.entries ?? []) {
-            if (!entry?.name_en || !entry.source) continue;
-            index.set(hashKey(entry.name_en, entry.source), entry);
+            if (!entry?.name_en) continue;
+            const key = isFeaturePack(type) ? featureHashKey(type, entry.uid) : entry.source ? hashKey(entry.name_en, entry.source) : null;
+            if (!key) continue;
+            index.set(key, entry);
             if (entry.slug) bySlug.set(entry.slug, entry);
         }
         record.index = index;

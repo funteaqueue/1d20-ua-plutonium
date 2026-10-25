@@ -2,10 +2,10 @@
     "id": "1d20-ua-plutonium",
     "title": "1d20.com.ua — Український переклад для Plutonium",
     "description": "Український переклад: 1d20.com.ua. Імпорт посилань і персонажів конструктора через Ctrl+V та Plutonium. Український переклад заклять, предметів і рис із поверненням оригіналу через меню; переклад усіх доступних записів персонажа.",
-    "version": "0.2.5",
+    "version": "0.3.0",
     "url": "https://github.com/funteaqueue/1d20-ua-plutonium",
     "manifest": "https://raw.githubusercontent.com/funteaqueue/1d20-ua-plutonium/main/module.json",
-    "download": "https://github.com/funteaqueue/1d20-ua-plutonium/archive/refs/tags/v0.2.5.zip",
+    "download": "https://github.com/funteaqueue/1d20-ua-plutonium/archive/refs/tags/v0.3.0.zip",
     "authors": [
         {
             "name": "Fantik"
