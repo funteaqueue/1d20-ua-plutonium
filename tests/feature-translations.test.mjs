@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
-import {featureHashKey, loadPack, find, hashKey, refresh} from '../scripts/data.js';
+import {adaptedSubclassFeatureHash, featureHashKey, loadPack, find, findLoaded, hashKey, refresh} from '../scripts/data.js';
 import {describeSource, translateActor, initTranslationHooks} from '../scripts/translate.js';
 import {runTranslationAction} from '../scripts/translation-ui.js';
 import {createPlutoniumCharacterAdapter} from '../scripts/character-plutonium.js';
@@ -81,6 +81,42 @@ test('feature lookup uses native flags even after renaming, and never guesses fr
     assert.equal(describeSource(doc).key, featureHashKey('classfeatures', entry.uid));
     delete doc.flags.plutonium.hash;
     assert.equal(describeSource(doc), null);
+});
+
+test('adapted legacy subclass features match live XPHB hashes only when their page confirms the edition', async () => {
+    for (const [name, className, shortName, source] of [
+        ['The Great Old One', 'Warlock', 'Great Old One', 'PHB'],
+        ['Ambition Domain (PSA)', 'Cleric', 'Ambition (PSA)', 'PSA'],
+        ['Channel Divinity: Invoke Duplicity', 'Cleric', 'Ambition (PSA)', 'PSA']
+    ]) {
+        const uid = `${name}|${className}|PHB|${shortName}|${source}|3|${source}`;
+        const entry = packs.subclassfeatures.entries.find(e => e.uid === uid);
+        const key = featureHashKey('subclassfeatures', uid.replace(`|${className}|PHB|`, `|${className}|XPHB|`));
+        assert.deepEqual(await find('subclassfeatures', key), entry);
+        assert.deepEqual(findLoaded('subclassfeatures', key), entry);
+        const doc = document('subclassfeatures', entry);
+        doc.flags.plutonium.hash = key;
+        await runTranslationAction(doc, 'translate');
+        assert.equal(doc.name, entry.name_uk);
+        assert.equal(adaptedSubclassFeatureHash({...entry, url: entry.url.replace('-xphb-', '-phb-')}), null);
+        assert.equal(adaptedSubclassFeatureHash({...entry, url: entry.url.replace('1d20.com.ua', 'example.com')}), null);
+        assert.equal(adaptedSubclassFeatureHash({...entry, url: entry.url.replace('subclasses/', 'classes/')}), null);
+    }
+    assert.equal(await find('subclassfeatures', 'the%20great%20old%20one_warlock_xphb_great%20old%20one_phb_1_phb'), null);
+});
+
+test('exact subclass UID translations take priority over adapted-page aliases', async () => {
+    const pack = packs.subclassfeatures;
+    const entry = pack.entries.find(e => e.uid === 'The Great Old One|Warlock|PHB|Great Old One|PHB|3|PHB');
+    const exact = {...entry, uid: entry.uid.replace('|Warlock|PHB|', '|Warlock|XPHB|'), name_uk: 'Exact edition'};
+    packs.subclassfeatures = {...pack, entries: [...pack.entries, exact]};
+    try {
+        await refresh();
+        assert.deepEqual(await find('subclassfeatures', featureHashKey('subclassfeatures', exact.uid)), exact);
+    } finally {
+        packs.subclassfeatures = pack;
+        await refresh();
+    }
 });
 
 test('manual translation and restoring original preserve feature mechanics and unrelated metadata', async () => {

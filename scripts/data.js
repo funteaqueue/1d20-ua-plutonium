@@ -54,6 +54,21 @@ export function featureHashKey(type, uid) {
     return parts.map(value => encodeURIComponent(String(value).toLowerCase()).toLowerCase()).join('_');
 }
 
+/** Some adapted legacy subclasses retain PHB in the site's UID while their
+ * canonical page explicitly targets an XPHB class. Only alias that exact page;
+ * never substitute editions based on a feature name alone. */
+export function adaptedSubclassFeatureHash(entry) {
+    if (!featureHashKey('subclassfeatures', entry?.uid)) return null;
+    const fields = entry.uid.split('|').map(value => value.trim());
+    if ((fields[2] || 'PHB').toUpperCase() !== 'PHB') return null;
+    const slug = slugFor(`${fields[1]}-XPHB-${fields[3]}`, fields[4] || 'PHB');
+    let url;
+    try { url = new URL(entry.url); } catch { return null; }
+    if (url.origin !== 'https://1d20.com.ua' || url.pathname !== `/subclasses/${slug}/`) return null;
+    fields[2] = 'XPHB';
+    return featureHashKey('subclassfeatures', fields.join('|'));
+}
+
 /**
  * Rebuild the slug 1d20.com.ua gives an entity from its English name and source,
  * e.g. ("Bigby's Hand", "PHB") -> "bigbys-hand-phb". Verified against every entry
@@ -175,7 +190,7 @@ export function loadPack(type) {
     const existing = state.packs.get(type);
     if (existing) return existing.promise;
 
-    const record = {promise: null, index: null, bySlug: null, meta: null, attribution: null};
+    const record = {promise: null, index: null, aliases: new Map(), bySlug: null, meta: null, attribution: null};
     record.promise = (async () => {
         const manifest = await getManifest();
         const meta = manifest.uk?.[type];
@@ -197,6 +212,11 @@ export function loadPack(type) {
             if (!key) continue;
             index.set(key, entry);
             if (entry.slug) bySlug.set(entry.slug, entry);
+            if (type === 'subclassfeatures') {
+                const alias = adaptedSubclassFeatureHash(entry);
+                // Ambiguous aliases remain unavailable; exact UIDs always win.
+                if (alias) record.aliases.set(alias, record.aliases.has(alias) ? null : entry);
+            }
         }
         record.index = index;
         record.bySlug = bySlug;
@@ -222,7 +242,7 @@ export function loadPack(type) {
 export function findLoaded(type, key) {
     const index = state.packs.get(type)?.index;
     if (!index) return undefined;
-    return index.get(key) ?? null;
+    return index.get(key) ?? state.packs.get(type).aliases.get(key) ?? null;
 }
 
 /**
@@ -231,8 +251,8 @@ export function findLoaded(type, key) {
  * @returns {Promise<object|null>}
  */
 export async function find(type, key) {
-    const index = await loadPack(type);
-    return index.get(key) ?? null;
+    await loadPack(type);
+    return findLoaded(type, key);
 }
 
 /**
