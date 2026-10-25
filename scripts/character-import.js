@@ -236,9 +236,13 @@ export async function prepareCharacterImport(input, {adapter, makeActor = source
     if (number(data.snapshot.armorClass)) check('КО', actor.system.attributes.ac.value, data.snapshot.armorClass);
     if (number(data.snapshot.speed)) check('Швидкість', actor.system.attributes.movement.walk, data.snapshot.speed);
     for (const row of data.snapshot.skillRows) {
-        const skill = actor.system.skills[SKILLS[row.id]];
+        const id = SKILLS[row.id], skill = actor.system.skills[id];
         check(`Характеристика ${row.en}`, skill.ability, skillAbility(row));
-        check(`Володіння ${row.en}`, skill.value, source.system.skills[SKILLS[row.id]].value);
+        // skill.value is derived: native rules such as Jack of All Trades may
+        // raise an untrained skill to half proficiency without changing its base.
+        const base = source.system.skills[id].value;
+        const expected = actor.system.calculateAbilityCheckProficiency?.(base, skillAbility(row), {skill: id})?.multiplier ?? base;
+        check(`Володіння ${row.en}`, skill.value, expected);
         if (number(row.mod) && number(skill.total) && skill.total !== row.mod) notes.push(`Навичка ${row.name ?? row.en}: бонус Foundry ${skill.total}, конструктор ${row.mod}. Перевірте додаткові ефекти здібностей; бонус не перевизначено.`);
     }
     if (mismatches.length) throw new Error(`Перевірка аркуша не пройшла. Нічого не записано.\n${mismatches.join('\n')}`);
