@@ -282,6 +282,18 @@ test('new imports expand druid spell lists while preserving preparation on both 
     }
 });
 
+test('portrait data never enters actor preparation or the core character source', async () => {
+    for (const portrait of ['data:image/png;base64,AA==', 'https://example.com/portrait.png', 'data:image/png;base64,broken!']) {
+        const data = fixture(), h = harness(), make = h.makeActor;
+        data.state.portrait = portrait;
+        h.makeActor = source => { assert.equal(source.img, undefined); return make(source); };
+        const out = await prepareCharacterImport(data, h);
+        assert.equal(out.portrait, portrait);
+        assert.equal(out.source.img, undefined);
+        assert.equal(out.source.flags['1d20-ua-plutonium'].characterImport.selections.portrait, undefined);
+    }
+});
+
 test('native HP bonus is not counted twice and necessary adjustments are reported', async () => {
     const prepared = await prepareCharacterImport(fixture(), harness({hpBonus: 1}));
     assert.equal(prepared.source.system.attributes.hp.bonuses, undefined);
