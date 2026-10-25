@@ -29,5 +29,6 @@
     "1d20-ua-plutonium.UI.Translated": "Ukrainian translation applied.",
     "1d20-ua-plutonium.UI.Restored": "Original name and description restored.",
     "1d20-ua-plutonium.UI.NoTranslation": "No matching translation or saved original is available. Plutonium source metadata is required.",
-    "1d20-ua-plutonium.UI.Failed": "Could not apply translation. See the console (F12)."
+    "1d20-ua-plutonium.UI.Failed": "Could not apply translation. See the console (F12).",
+    "1d20-ua-plutonium.UI.CompleteSpellLists": "Complete class spell lists"
 }

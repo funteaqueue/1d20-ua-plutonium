@@ -9,7 +9,10 @@ export async function runTranslationAction(doc, action) {
     if (!editable(doc) || busy.has(doc)) return;
     busy.add(doc);
     try {
-        if (action === 'all') {
+        if (action === 'spells') {
+            const {completeCharacterSpellLists} = await import('./character-spell-completion.js');
+            await completeCharacterSpellLists(doc);
+        } else if (action === 'all') {
             const count = await translateActor(doc);
             ui.notifications.info(game.i18n.format(`${MODULE_ID}.UI.TranslatedCount`, {count}));
         } else {
@@ -19,13 +22,16 @@ export async function runTranslationAction(doc, action) {
         }
     } catch (error) {
         console.error(`${MODULE_ID} | Manual translation failed`, error);
-        ui.notifications.error(t('Failed'));
+        ui.notifications.error(action === 'spells' ? `1d20: ${error.message}` : t('Failed'));
     } finally { busy.delete(doc); }
 }
 
 export function translationActions(doc) {
     if (!editable(doc)) return [];
-    if (doc.documentName === 'Actor') return [{id: 'all', label: t('TranslateAll'), icon: 'fa-solid fa-language'}];
+    if (doc.documentName === 'Actor') return [
+        {id: 'all', label: t('TranslateAll'), icon: 'fa-solid fa-language'},
+        ...(doc.type === 'character' ? [{id: 'spells', label: t('CompleteSpellLists'), icon: 'fa-solid fa-book-open'}] : [])
+    ];
     if (doc.documentName !== 'Item') return [];
     if (isTranslated(doc) && doc.flags?.[MODULE_ID]?.original) return [{id: 'original', label: t('RestoreOriginal'), icon: 'fa-solid fa-rotate-left'}];
     return [{id: 'translate', label: t('Translate'), icon: 'fa-solid fa-language'}];

@@ -71,6 +71,13 @@ test('item row menus use the context API of each system version', () => {
     }
 });
 
+test('owned character sheets expose spell-list completion, other actors do not', () => {
+    const actor = {documentName: 'Actor', type: 'character', isOwner: true};
+    assert(translationActions(actor).some(action => action.id === 'spells'));
+    assert(!translationActions({...actor, type: 'npc'}).some(action => action.id === 'spells'));
+    assert.deepEqual(translationActions({...actor, isOwner: false}), []);
+});
+
 test('translate all batches eligible items and skips custom or already translated entries', async () => {
     const first = item(), existing = item(), custom = item();
     existing.id = 'translated';

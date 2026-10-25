@@ -6,6 +6,7 @@ import {initPaste} from './paste.js';
 import {initTranslationUI} from './translation-ui.js';
 import {inspectCharacterExport, previewCharacterExport} from './character-builder.js';
 import {characterImportIssues, prepareCharacterImport, importCharacterExport, repairCharacterSkills} from './character-import.js';
+import {completeCharacterSpellLists} from './character-spell-completion.js';
 
 Hooks.once('init', () => {
     registerSettings();
@@ -29,7 +30,7 @@ Hooks.once('ready', () => {
     }
 
     game.modules.get(MODULE_ID).api = {
-        builder: {inspect: inspectCharacterExport, preview: previewCharacterExport, issues: characterImportIssues, prepare: prepareCharacterImport, import: importCharacterExport, repairSkills: repairCharacterSkills},
+        builder: {inspect: inspectCharacterExport, preview: previewCharacterExport, issues: characterImportIssues, prepare: prepareCharacterImport, import: importCharacterExport, repairSkills: repairCharacterSkills, completeSpellLists: completeCharacterSpellLists},
         data: {getManifest, loadPack, refresh, getDataInfo, hashKey},
         describeSource,
         convertRolls,

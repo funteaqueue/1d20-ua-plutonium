@@ -5,6 +5,7 @@ import {createPlutoniumCharacterAdapter} from './character-plutonium.js';
 import {additionalSpellRules, findSpellGrant, configureCharacterSpell, characterSpellAbility} from './character-spells.js';
 import {customResourceFeatures} from './character-resources.js';
 import {characterSystemMajor, initialCharacterArmor, overrideCharacterArmor} from './character-compat.js';
+import {expandClassSpellLists} from './character-spell-lists.js';
 export {characterImportIssues, characterActorSource, createPlutoniumCharacterAdapter};
 
 export function canPopulateCharacter(actor) {
@@ -156,7 +157,8 @@ export async function prepareCharacterImport(input, {adapter, makeActor = source
         if (!abilityChoices.has(request.key)) abilityChoices.set(request.key, await chooseAbility(request));
         return abilityChoices.get(request.key);
     };
-    for (const row of plan.spells) {
+    const spells = await expandClassSpellLists(classes, plan.spells, adapter, notes, (slug, entity) => resolved.set(`spells:${slug}`, clone(entity)));
+    for (const row of spells) {
         const cls = classes.find(entry => entry.slug === row.classSlug);
         let slug = row.slug;
         if (!slug) {

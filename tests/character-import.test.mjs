@@ -203,6 +203,32 @@ test('preparation imports selected inventory only, handles packs and preserves n
     assert.equal(source.system.details.originalClass, cls._id);
 });
 
+test('new imports expand druid spell lists while preserving preparation on both system generations', async () => {
+    for (const systemVersion of ['5.3.3', '6.0.0']) {
+        const data = fixture(), h = harness(), resolve = h.adapter.resolve;
+        data.character.level = 3;
+        data.character.classes = [{slug: 'druid-xphb', level: 3}];
+        data.snapshot.classPathOf = Array(3).fill('druid-xphb');
+        data.snapshot.hpLevels = [{lvl: 2, v: 5}, {lvl: 3, v: 5}];
+        data.snapshot.hitPoints = 27;
+        data.snapshot.mechanics.hpBonuses = [{hp: 3}];
+        data.snapshot.casting = [{classSlug: 'druid-xphb', selectedSpells: [{slug: 'cure-wounds-xphb', prep: true}], spellStats: {ability: 'wis'}}];
+        h.adapter.resolve = async (type, slug, ...args) => type === 'classes' && slug === 'druid-xphb'
+            ? {name: 'Druid', source: 'XPHB', hd: {faces: 8}, spellcastingAbility: 'wis', classTableGroups: [{rowsSpellProgression: [[2], [3], [4, 2]]}]}
+            : resolve(type, slug, ...args);
+        h.adapter.classSpellList = async cls => {
+            assert.equal(cls.level, 3);
+            return [{name: 'Cure Wounds', source: 'XPHB', level: 1}, {name: 'Moonbeam', source: 'XPHB', level: 2}];
+        };
+        const out = await prepareCharacterImport(data, {...h, systemVersion});
+        const spells = out.source.items.filter(item => item.type === 'spell');
+        assert.equal(spells.length, 2);
+        assert.equal(spells.find(item => item.name === 'cure-wounds-xphb').system.prepared, 1);
+        assert.equal(spells.find(item => item.name === 'Moonbeam').system.prepared, 0);
+        assert(spells.every(item => item.system.ability === 'wis' && item.system.sourceItem === 'class:Druid'));
+    }
+});
+
 test('native HP bonus is not counted twice and necessary adjustments are reported', async () => {
     const prepared = await prepareCharacterImport(fixture(), harness({hpBonus: 1}));
     assert.equal(prepared.source.system.attributes.hp.bonuses, undefined);
