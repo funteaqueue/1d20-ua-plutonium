@@ -1,54 +1,66 @@
 {
   "format": 1,
-  "generated_at": "2026-10-12T22:22:33+00:00",
+  "generated_at": "2026-10-25T15:38:19+00:00",
   "home": "https://1d20.com.ua",
   "base": "https://1d20.com.ua/wp-json/dnd/v1/data",
   "attribution": "Український переклад: 1d20.com.ua",
   "index": {
     "bestiary": {
       "file": "index/bestiary.json",
-      "bytes": 2362378,
+      "bytes": 2362585,
       "count": 4560,
-      "sha1": "25fcb5021b4e121a651443e23b0b0ae421b77cac"
+      "sha1": "d3d51ac075507dcb0a64b5ee8bf7a3d75bc897f5"
     }
   },
   "uk": {
     "spells": {
       "file": "uk/spells.json",
-      "bytes": 1821598,
+      "bytes": 1824774,
       "count": 969,
-      "sha1": "fa8f4723cceb743f66f4e2c0bd0bad42ce4925d6"
+      "sha1": "32adcbb31232264da23c0cebefa8e3287a638bcc"
     },
     "items": {
       "file": "uk/items.json",
-      "bytes": 8228451,
-      "count": 5885,
-      "sha1": "a5fcfe790ba8953fd694f315755d48dc922447db"
+      "bytes": 8439991,
+      "count": 5947,
+      "sha1": "906534c8c586fedf11fbe2c8344511d7e4a5ef7d"
     },
     "feats": {
       "file": "uk/feats.json",
-      "bytes": 526406,
+      "bytes": 530315,
       "count": 305,
-      "sha1": "6dabb393fa287b10daa6cb77981b3098656dfaa2"
+      "sha1": "b2517e833bdae6762965fb18fe7e19c5ed8e5e88"
     },
     "optionalfeatures": {
       "file": "uk/optionalfeatures.json",
-      "bytes": 207124,
+      "bytes": 207250,
       "count": 221,
-      "sha1": "98a403d67c34744cd375bf421f6dab12e0dfb6de"
+      "sha1": "ab64ee94560ee2873aa1f3aebe2b921bd0d1bab4"
     },
     "backgrounds": {
       "file": "uk/backgrounds.json",
-      "bytes": 1080600,
+      "bytes": 1148073,
       "count": 171,
-      "sha1": "5b83645da9ddec30da52acd808c5ea1a8122727a"
+      "sha1": "b9801da03feec0580156023c3b2e1839ccd5242a"
     },
     "races": {
       "file": "uk/races.json",
-      "bytes": 512700,
+      "bytes": 512894,
       "count": 161,
-      "sha1": "2a99ededaf6a6bd9c2dfc9aa356ee4ed165af847"
+      "sha1": "ed07c8bc353ff9e96272ecf9173c5636edaa3e67"
+    },
+    "classfeatures": {
+      "file": "uk/classfeatures.json",
+      "bytes": 776904,
+      "count": 677,
+      "sha1": "ef3157b47f09b58d00ecb2e215a788fa4b9ad3b9"
+    },
+    "subclassfeatures": {
+      "file": "uk/subclassfeatures.json",
+      "bytes": 2532966,
+      "count": 1607,
+      "sha1": "bb78f09b3c81b51f89bbb73d1636d94c0115d434"
     }
   },
-  "version": "a64f011725f3"
+  "version": "0f5c9ad42399"
 }
