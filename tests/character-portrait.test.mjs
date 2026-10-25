@@ -74,6 +74,32 @@ test('URL portraits need no file permission, while malformed embedded images onl
     }
 });
 
+test('sealed or frozen prepared data can be committed without mutation, even when the portrait fails', async () => {
+    for (const existing of [false, true]) for (const allow of [false, true]) {
+        const h = setup({allow});
+        try {
+            const source = Object.freeze({name: 'Imported', img: 'icons/svg/mystery-man.svg', items: Object.freeze([])});
+            const prepared = Object.freeze({...await h.prepare(), source, notes: Object.freeze([])});
+            assert.equal(await importCharacterExport({}, {actor: existing ? h.actor : null, review: false, prepare: async () => prepared}), h.actor);
+            assert.equal(source.img, 'icons/svg/mystery-man.svg');
+            assert.equal(h.writes[0].img, existing ? 'existing.png' : undefined);
+            assert.equal(h.events.filter(event => event === 'commit').length, 1);
+            assert.equal(h.warnings.length, allow ? 0 : 1);
+        } finally { teardown(); }
+    }
+});
+
+test('a generated default image is not treated as an exported portrait', async () => {
+    const h = setup();
+    try {
+        const prepared = {...await h.prepare(), portrait: null, source: Object.seal({name: 'Imported', img: 'icons/svg/mystery-man.svg'})};
+        await importCharacterExport({}, {actor: h.actor, review: false, prepare: async () => prepared});
+        assert.equal(h.writes[0].img, 'existing.png');
+        assert.deepEqual(h.events, ['commit', 'render']);
+        assert.equal(h.warnings.length, 0);
+    } finally { teardown(); }
+});
+
 test('cancelled reviews and failed character commits do not upload or apply portraits', async () => {
     const h = setup();
     try {

@@ -19,7 +19,7 @@ const clone = value => structuredClone(value);
 const number = value => typeof value === 'number' && Number.isFinite(value);
 
 /** Build everything in memory. Only the separate commit function writes to the world. */
-export async function prepareCharacterImport(input, {adapter, makeActor = source => new CONFIG.Actor.documentClass(source), randomID = () => foundry.utils.randomID(), actorId = null, chooseAbility = noChoice, systemVersion = globalThis.game?.system?.version ?? '6.0.0'} = {}) {
+export async function prepareCharacterImport(input, {adapter, makeActor = source => new CONFIG.Actor.documentClass(clone(source)), randomID = () => foundry.utils.randomID(), actorId = null, chooseAbility = noChoice, systemVersion = globalThis.game?.system?.version ?? '6.0.0'} = {}) {
     const plan = buildCharacterPlan(input);
     const systemMajor = characterSystemMajor(systemVersion);
     adapter ??= createPlutoniumCharacterAdapter();
@@ -309,11 +309,14 @@ export async function importCharacterExport(input, {actor = null, prepare = prep
             if (action !== 'apply') return null;
         }
         if (actor && (!canPopulateCharacter(actor) || JSON.stringify(actor.toObject()) !== initial)) throw new Error('Аркуш змінився під час підготовки. Повторіть вставляння.');
-        const portrait = prepared.portrait ?? prepared.source.img;
-        delete prepared.source.img;
+        // Foundry can add default fields and seal objects used by DataModels.
+        // Always edit a detached payload, never the prepared model's source.
+        const source = clone(prepared.source);
+        const portrait = Object.hasOwn(prepared, 'portrait') ? prepared.portrait : source.img;
+        delete source.img;
         // Preserve an existing portrait if the optional replacement fails.
-        if (actor && JSON.parse(initial).img) prepared.source.img = JSON.parse(initial).img;
-        const result = actor ? await actor.importFromJSON(JSON.stringify(prepared.source)) : await CONFIG.Actor.documentClass.create(prepared.source, {renderSheet: false, keepId: true});
+        if (actor && JSON.parse(initial).img) source.img = JSON.parse(initial).img;
+        const result = actor ? await actor.importFromJSON(JSON.stringify(source)) : await CONFIG.Actor.documentClass.create(source, {renderSheet: false, keepId: true});
         if (!result) throw new Error('Foundry скасував збереження персонажа.');
         await result.sheet.render(true);
         ui.notifications.info(`1d20: ${prepared.name} — імпортовано ${prepared.itemCount} записів.`);
@@ -323,7 +326,6 @@ export async function importCharacterExport(input, {actor = null, prepare = prep
                 const note = 'Персонажа імпортовано, але портрет не встановлено. Перевірте дозвіл на завантаження, формат зображення та доступність сховища; портрет можна додати вручну.';
                 ui.notifications.warn(note);
                 const notes = unique([...array(prepared.notes), note]);
-                prepared.notes = notes;
                 // Even saving the warning must not turn a successful import into a failure.
                 try { await result.update({[`flags.${MODULE_ID}.characterImport.report.notes`]: notes}); }
                 catch { /* The notification above remains visible. */ }

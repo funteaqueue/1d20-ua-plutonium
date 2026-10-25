@@ -294,6 +294,25 @@ test('portrait data never enters actor preparation or the core character source'
     }
 });
 
+test('native preview models cannot add sealed default fields to the prepared source', async () => {
+    const data = fixture(), h = harness();
+    data.state.portrait = 'data:image/png;base64,AA==';
+    globalThis.CONFIG = {Actor: {documentClass: class {
+        constructor(source) {
+            Object.defineProperty(source, 'img', {value: 'icons/svg/mystery-man.svg', enumerable: true, configurable: false});
+            Object.seal(source);
+            return h.makeActor(source);
+        }
+    }}};
+    try {
+        const {makeActor, ...options} = h;
+        const out = await prepareCharacterImport(data, options);
+        assert.equal(Object.hasOwn(out.source, 'img'), false);
+        assert.equal(Object.isSealed(out.source), false);
+        assert.equal(out.portrait, data.state.portrait);
+    } finally { delete globalThis.CONFIG; }
+});
+
 test('native HP bonus is not counted twice and necessary adjustments are reported', async () => {
     const prepared = await prepareCharacterImport(fixture(), harness({hpBonus: 1}));
     assert.equal(prepared.source.system.attributes.hp.bonuses, undefined);
