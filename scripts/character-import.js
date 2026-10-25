@@ -299,7 +299,7 @@ export async function importCharacterExport(input, {actor = null, prepare = prep
         const prepared = await prepare(input, {actorId: actor?.id, chooseAbility: selectSpellAbility});
         if (review) {
             const target = actor ? `Буде заповнено порожній аркуш «${escapeHTML(actor.name)}»: його характеристики, гроші та біографію буде замінено.` : 'Буде створено нового персонажа.';
-            const action = await foundry.applications.api.DialogV2.wait({window: {title: '1d20 → Foundry: результат підготовки'}, position: {width: 720}, content: `<p>${target}</p>${characterImportReportHTML(prepared)}`,
+            const action = await foundry.applications.api.DialogV2.wait({window: {title: '1d20 → Foundry: результат підготовки'}, position: {width: 720}, content: `<div class="d20-character-report" tabindex="0" role="region" aria-label="Звіт імпорту"><p>${target}</p>${characterImportReportHTML(prepared)}</div>`,
                 buttons: [{action: 'apply', label: actor ? 'Заповнити аркуш' : 'Створити персонажа'}, {action: 'cancel', label: 'Скасувати', default: true}], rejectClose: false});
             if (action !== 'apply') return null;
         }
