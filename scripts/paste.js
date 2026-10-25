@@ -2,6 +2,7 @@ import {MODULE_ID, PLUTONIUM_ID, PAGE_TO_TYPE, TYPE_TO_PAGE} from './constants.j
 import {SETTINGS, getSetting} from './settings.js';
 import {hashKey, findBySlug, slugFor} from './data.js';
 import {requestTranslation} from './translate.js';
+import {parseCharacterExport, previewCharacterExport} from './character-builder.js';
 
 /**
  * Paste-to-import: paste a 5e.tools or 1d20.com.ua link anywhere in Foundry and import
@@ -82,6 +83,20 @@ async function handlePaste(event) {
     if (target instanceof Element && target.closest('input, textarea, select, [contenteditable="true"], .ProseMirror')) return;
 
     const text = event.clipboardData?.getData('text/plain') ?? '';
+    // A character snapshot contains URLs in its metadata. Consume its envelope before
+    // the link parser so those URLs cannot accidentally import individual entities.
+    try {
+        const character = parseCharacterExport(text);
+        if (character) {
+            event.preventDefault();
+            await previewCharacterExport(character, {actor: resolveTargetActor(target)});
+            return;
+        }
+    } catch (error) {
+        console.error(`${MODULE_ID} | Character paste import failed`, error);
+        ui.notifications.error(`1d20: ${error.message}`);
+        return;
+    }
     const links = parseLinks(text);
     if (!links.length) return;
 

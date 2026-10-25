@@ -162,6 +162,7 @@ export function buildUpdate(doc, entry, type) {
     }
 
     update[`flags.${MODULE_ID}`] = {
+        ...doc.flags?.[MODULE_ID],
         nameEn: entry.name_en ?? originalName,
         source: entry.source,
         slug: entry.slug,
@@ -241,7 +242,9 @@ export async function translateItem(item, {force = false} = {}) {
 export async function revertItem(item) {
     const original = item.flags?.[MODULE_ID]?.original;
     if (!original) return false;
-    const update = {name: original.name, [`flags.-=${MODULE_ID}`]: null};
+    const update = {name: original.name};
+    // Translation metadata shares this namespace with spell origins and custom resources.
+    for (const key of ['nameEn', 'source', 'slug', 'url', 'original']) update[`flags.${MODULE_ID}.-=${key}`] = null;
     if (original.description != null && item.system?.description !== undefined) {
         update['system.description.value'] = original.description;
     }

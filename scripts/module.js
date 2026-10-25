@@ -3,6 +3,9 @@ import {registerSettings, getTranslateMode} from './settings.js';
 import {getManifest, loadPack, refresh, getDataInfo, preload, hashKey} from './data.js';
 import {initTranslationHooks, translateItem, translateActor, translateWorld, revertItem, describeSource, convertRolls, requestTranslation} from './translate.js';
 import {initPaste} from './paste.js';
+import {initTranslationUI} from './translation-ui.js';
+import {inspectCharacterExport, previewCharacterExport} from './character-builder.js';
+import {characterImportIssues, prepareCharacterImport, importCharacterExport, repairCharacterSkills} from './character-import.js';
 
 Hooks.once('init', () => {
     registerSettings();
@@ -15,6 +18,7 @@ Hooks.once('ready', () => {
     }
 
     initTranslationHooks();
+    initTranslationUI();
     initPaste();
 
     if (plutoniumActive && getTranslateMode() === 'always') {
@@ -25,6 +29,7 @@ Hooks.once('ready', () => {
     }
 
     game.modules.get(MODULE_ID).api = {
+        builder: {inspect: inspectCharacterExport, preview: previewCharacterExport, issues: characterImportIssues, prepare: prepareCharacterImport, import: importCharacterExport, repairSkills: repairCharacterSkills},
         data: {getManifest, loadPack, refresh, getDataInfo, hashKey},
         describeSource,
         convertRolls,
