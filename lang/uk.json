@@ -21,5 +21,13 @@
     "1d20-ua-plutonium.Notifications.TranslateFailed": "Не вдалося застосувати український переклад до «{name}». Подробиці в консолі (F12).",
     "1d20-ua-plutonium.Notifications.DataUnavailable": "Не вдалося завантажити дані 1d20.com.ua для «{type}». Подробиці в консолі (F12).",
     "1d20-ua-plutonium.Notifications.SlugNotFound": "«{slug}» не знайдено в даних 1d20.com.ua ({type}).",
-    "1d20-ua-plutonium.Notifications.OriginalFallback": "Для «{name}» ще немає українських даних, імпортую англійський оригінал."
+    "1d20-ua-plutonium.Notifications.OriginalFallback": "Для «{name}» ще немає українських даних, імпортую англійський оригінал.",
+    "1d20-ua-plutonium.UI.Translate": "Перекласти українською",
+    "1d20-ua-plutonium.UI.RestoreOriginal": "Повернути оригінал",
+    "1d20-ua-plutonium.UI.TranslateAll": "Перекласти все",
+    "1d20-ua-plutonium.UI.TranslatedCount": "Перекладено записів: {count}. Записи без перекладу та вже перекладені залишено без змін.",
+    "1d20-ua-plutonium.UI.Translated": "Український переклад застосовано.",
+    "1d20-ua-plutonium.UI.Restored": "Оригінальну назву й опис відновлено.",
+    "1d20-ua-plutonium.UI.NoTranslation": "Для цього запису немає відповідного перекладу або збереженого оригіналу. Потрібні дані джерела Plutonium.",
+    "1d20-ua-plutonium.UI.Failed": "Не вдалося застосувати переклад. Подробиці в консолі (F12)."
 }

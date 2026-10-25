@@ -1,0 +1,253 @@
+/* 1d20 → Foundry export adapter. Own integration code; uses the site's runtime APIs.
+ * Load after cb-data, cb-equipment and cb-sheet. No network requests or storage writes.
+ * See docs/character-builder.uk.md for the v1 contract and button integration.
+ */
+(function installD20FoundryExporter(root) {
+    'use strict';
+
+    const FORMAT = '1d20.character';
+    const VERSION = '0.2.0';
+    // Some builder helpers return Sets (notably allExpertise). Plain JSON.stringify
+    // would silently turn them into {}, losing the actual choices.
+    const clone = value => value === undefined ? null : JSON.parse(JSON.stringify(value, (_key, entry) => {
+        const tag = Object.prototype.toString.call(entry);
+        if (tag === '[object Set]' || tag === '[object Map]') return Array.from(entry);
+        return entry;
+    }));
+    const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+    const unwrap = value => Array.isArray(value) ? value[0] : Array.isArray(value?.items) ? value.items[0] : value;
+
+    function exportCharacter(options = {}) {
+        const cbd = root.CBD;
+        const sheet = root.CBSheet;
+        if (!cbd || !sheet) throw new Error('Відкрийте конструктор 1d20 і дочекайтеся його завантаження.');
+        const stored = options.state === undefined ? root.localStorage.getItem('dnd_character_v2') : null;
+        const raw = clone(options.state === undefined ? (stored ? JSON.parse(stored) : null) : options.state);
+        if (!isObject(raw)) throw new Error('Немає поточного персонажа. Спочатку створіть або відкрийте героя в конструкторі.');
+        const catalog = unwrap(options.catalog ?? root.MASTER_DATA);
+        if (!Array.isArray(catalog?.classes) || !Array.isArray(catalog?.races)) {
+            throw new Error('Каталог конструктора ще не завантажений або його формат змінився.');
+        }
+        const warnings = [];
+        const unresolvedReferences = [];
+        const warn = (code, path, message) => warnings.push({code, path, message});
+        if (options.includePortrait === false) {
+            raw.portrait = null;
+            warn('portrait-omitted', 'state.portrait', 'Портрет виключено за запитом.');
+        } else if (typeof raw.portrait === 'string' && raw.portrait.startsWith('blob:')) {
+            warn('local-portrait', 'state.portrait', 'Blob-посилання на портрет не працюватиме поза цим браузером.');
+        }
+
+        // Work on a separate copy: site helpers may enrich or normalize their argument.
+        const state = clone(raw);
+        function resolve(type, slug, path) {
+            if (!slug) return null;
+            const result = (catalog[type] ?? []).find(row => row.slug === slug);
+            if (!result) unresolvedReferences.push({type, slug, path});
+            return clone(result);
+        }
+        state.raceData = resolve('races', state.raceSlug, 'state.raceSlug');
+        state.subraceData = resolve('subraces', state.subraceSlug, 'state.subraceSlug');
+        state.classData = resolve('classes', state.classSlug, 'state.classSlug');
+        state.subclassData = resolve('subclasses', state.subclassSlug, 'state.subclassSlug');
+        state.bgData = resolve('backgrounds', state.bgSlug, 'state.bgSlug');
+
+        function call(owner, name, args, path) {
+            if (typeof owner?.[name] !== 'function') {
+                warn('missing-helper', path, `У конструкторі немає функції ${name}.`);
+                return null;
+            }
+            try {
+                return clone(owner[name](...args));
+            } catch (error) {
+                warn('helper-failed', path, `${name}: ${error.message}`);
+                return null;
+            }
+        }
+        call(cbd, 'resolveImprovements', [state, catalog], 'snapshot.improvements');
+        call(cbd, 'mcResolveImprovements', [state, catalog], 'snapshot.improvements');
+        call(cbd, 'enrichSpells', [state, catalog], 'snapshot.spells');
+        const print = call(cbd, 'printSnapshot', [state, catalog], 'snapshot.print');
+        if (isObject(print)) Object.assign(state, print);
+        const finalScores = call(cbd, 'calcFinalScores', [state], 'snapshot.abilities.final');
+        const classLevels = call(cbd, 'classLevelList', [state, catalog], 'character.classes') ?? [];
+        const classes = classLevels.map(row => ({
+            slug: row.slug,
+            level: row.level,
+            primary: row.slug === state.classSlug,
+            subclassSlug: row.slug === state.classSlug ? state.subclassSlug ?? null
+                : (state.multiclass ?? []).find(entry => entry.slug === row.slug)?.subclassSlug ?? null
+        }));
+        const snapshot = {
+            abilities: {base: clone(raw.scores), final: finalScores},
+            // Includes hydrated definitions, resolved ASIs, and the site's print snapshot.
+            // Treat as evidence, never as a Foundry actor update object.
+            resolvedState: state
+        };
+        for (const name of ['charLevelOf', 'pbOf', 'classPathOf', 'allAsiResolved', 'allExpertise',
+            'allMasteryNames', 'featSlugsOf', 'heroFeatureGrants', 'heroSlots', 'goldNow',
+            'languageRows', 'toolRows', 'raceTraits', 'raceSenses', 'heroSize', 'hpLevels']) {
+            snapshot[name] = call(cbd, name, [state, catalog], `snapshot.${name}`);
+        }
+        if (finalScores) {
+            for (const name of ['hitPoints', 'hitDice', 'armorClass', 'speed', 'initiative',
+                'passivePerception', 'skillRows', 'savingThrowRows', 'proficiencyRows', 'attackRows']) {
+                snapshot[name] = call(sheet, name, [state, finalScores], `snapshot.${name}`);
+            }
+        }
+        const mcViews = call(cbd, 'mcViews', [state, catalog], 'snapshot.casting') ?? [];
+        const views = [{slug: state.classSlug, level: state.level, view: state}, ...mcViews];
+        // Machine-readable choices: display rows alone lose keys and spell origins.
+        // Optional for compatibility with older builder runtimes and v1 exports.
+        const extra = (name, view = state) => typeof cbd[name] === 'function'
+            ? call(cbd, name, [view, catalog], `snapshot.mechanics.${name}`) : null;
+        const languages = extra('languageSlots');
+        const toolKeys = new Set();
+        for (const {view} of views) {
+            const ledger = extra('toolLedger', view);
+            for (const [key] of ledger?.fixed ?? []) toolKeys.add(key);
+            for (const choice of ledger?.choices ?? []) for (const key of choice.chosen ?? []) toolKeys.add(key);
+        }
+        snapshot.mechanics = {
+            languages: languages?.known?.map(([key]) => key) ?? null,
+            tools: typeof cbd.toolLedger === 'function' ? [...toolKeys] : null,
+            weapons: extra('weaponProfKeys'),
+            armor: [...new Set([
+                ...(state.classData?.armor_keys ?? []), ...(state.raceData?.armor_keys ?? []), ...(state.subraceData?.armor_keys ?? []),
+                ...mcViews.flatMap(({view}) => view.classData?.mc_armor_keys ?? []),
+                ...(snapshot.heroFeatureGrants ?? []).flatMap(row => row.armorKeys ?? []),
+                ...(catalog.feats ?? []).filter(row => (snapshot.featSlugsOf ?? []).includes(row.slug)).flatMap(row => row.armor_keys ?? [])
+            ])],
+            hpBonuses: extra('hpBonuses'), ac: extra('acRules'), checks: extra('checkRules'),
+            saves: extra('saveRules'), attacks: extra('attackRules'), extras: extra('profExtras'),
+            lineage: extra('lineageOption'), raceSpellSource: extra('raceSpellSrc')
+        };
+        snapshot.casting = views.map(({slug, level, view}) => {
+            const entry = {classSlug: slug, level, selectedSpells: clone(view.spells ?? []),
+                classOptions: clone(view.classOpts ?? {}), featureOptions: extra('featureOptionSlots', view),
+                featureVariants: extra('featureVariantSlots', view), weaponMastery: clone(view.weaponMastery ?? []),
+                castingAbility: extra('castStat', view), spellcasting: clone(view.subclassData?.spellcasting ?? view.classData?.spellcasting ?? null)};
+            for (const name of ['spellsForSheet', 'raceSpellList', 'subclassSpellList', 'featSpellList',
+                'featGrants', 'featPicks', 'arcanumList', 'spellbook']) {
+                // arcanumList's second argument is a label, not the master catalogue.
+                entry[name] = call(cbd, name, name === 'arcanumList' ? [view] : [view, catalog], `snapshot.casting.${slug}.${name}`);
+            }
+            entry.spellStats = finalScores ? call(sheet, 'spellStats', [view, finalScores], `snapshot.casting.${slug}.spellStats`) : null;
+            return entry;
+        });
+
+        const incompleteStages = [];
+        const stages = call(cbd, 'visibleStages', [state, catalog], 'diagnostics.stages');
+        for (const stage of stages ?? []) {
+            const missing = call(cbd, 'stageMissing', [state, catalog, stage.k], `diagnostics.stages.${stage.k}`);
+            if (missing?.length) incompleteStages.push({stage: stage.k, label: stage.label, missing});
+        }
+        for (const field of ['raceSlug', 'classSlug', 'bgSlug']) {
+            if (!state[field]) warn('missing-selection', `state.${field}`, `Не вибрано ${field}.`);
+        }
+        if (!['2014', '2024'].includes(String(state.edition))) warn('unknown-edition', 'state.edition', 'Невідома редакція правил.');
+
+        const references = collectReferences(catalog, [raw, snapshot], unresolvedReferences);
+        return {
+            format: FORMAT,
+            schemaVersion: 1,
+            exporter: {name: '1d20-ua-plutonium', version: VERSION},
+            exportedAt: new Date().toISOString(),
+            builder: {version: cbd.BUILDER_VERSION ?? null, catalogOrigin: catalog._origin ?? null},
+            rules: {system: 'dnd5e', edition: String(raw.edition ?? ''), homebrew: clone(raw.homebrew ?? {})},
+            character: {
+                id: raw.id ?? null, name: raw.charName ?? '',
+                level: snapshot.charLevelOf, classes,
+                raceSlug: raw.raceSlug ?? null, subraceSlug: raw.subraceSlug ?? null,
+                backgroundSlug: raw.bgSlug ?? null
+            },
+            state: raw,
+            snapshot,
+            references,
+            diagnostics: {incompleteStages, unresolvedReferences, warnings}
+        };
+    }
+
+    function collectReferences(catalog, roots, unresolved) {
+        const index = new Map();
+        const records = new Map();
+        const selected = new Set();
+        const normalize = text => String(text).toLowerCase();
+        const addIndex = (token, id) => {
+            if (!token) return;
+            const key = normalize(token);
+            if (!index.has(key)) index.set(key, new Set());
+            index.get(key).add(id);
+        };
+        function addRecord(type, row, key) {
+            const slug = row.slug ?? row.s ?? null;
+            const nameEn = row.name_en ?? row.title_en ?? row.en ?? null;
+            // Spell sources are intentionally left null when the site only gives a slug.
+            const source = row.source ?? (key?.includes('|') ? key.slice(key.lastIndexOf('|') + 1).toUpperCase() : null);
+            const uid = key ?? (nameEn && source ? `${nameEn}|${source}` : null);
+            const id = `${type}:${slug ?? uid}`;
+            records.set(id, {type, slug, name: row.name ?? row.title ?? row.n ?? null, nameEn, source, uid,
+                parent: row.class_key ?? row.race_key ?? null, data: clone(row)});
+            addIndex(slug, id);
+            addIndex(uid, id);
+        }
+        for (const type of ['races', 'subraces', 'classes', 'subclasses', 'backgrounds', 'spells', 'feats', 'optionalFeatures']) {
+            for (const row of catalog[type] ?? []) addRecord(type, row);
+        }
+        for (const [key, row] of Object.entries(catalog.equipment?.items ?? {})) addRecord('items', row, key);
+        const visited = new WeakSet();
+        function scan(value) {
+            if (typeof value === 'string') {
+                for (const id of index.get(normalize(value)) ?? []) {
+                    if (selected.has(id)) continue;
+                    selected.add(id);
+                    // Transitive definitions are context, NOT a list of items to import.
+                    scan(records.get(id).data);
+                }
+            } else if (value && typeof value === 'object' && !visited.has(value)) {
+                visited.add(value);
+                for (const [key, entry] of Object.entries(value)) {
+                    scan(key);
+                    scan(entry);
+                }
+            }
+        }
+        roots.forEach(scan);
+        // Diagnose explicit selected references without guessing from translated names.
+        const refKeys = new Set(['slug', 'raceSlug', 'subraceSlug', 'classSlug', 'subclassSlug', 'bgSlug', 'raceFeat', 'feat']);
+        function check(value, path) {
+            if (!value || typeof value !== 'object') return;
+            for (const [key, entry] of Object.entries(value)) {
+                // Persisted featGrantsSnap also uses "feat" for translated display text.
+                const isFeatChoice = key !== 'feat' || /\.asi(?:Resolved)?\.[^.]+$/.test(path);
+                const isClassOption = path.endsWith('.classOpts');
+                if (((refKeys.has(key) && isFeatChoice) || isClassOption) && typeof entry === 'string' && entry && !index.has(normalize(entry))) {
+                    if (!unresolved.some(item => item.path === `${path}.${key}`)) unresolved.push({slug: entry, path: `${path}.${key}`});
+                } else if (entry && typeof entry === 'object') check(entry, `${path}.${key}`);
+            }
+        }
+        check(roots[0], 'state');
+        return {
+            entities: [...selected].sort().map(id => records.get(id)),
+            lookups: clone({languages: catalog.languages, tools: catalog.tools, weaponMasteries: catalog.weaponMasteries})
+        };
+    }
+
+    function toJSON(options) { return JSON.stringify(exportCharacter(options), null, 2); }
+    async function copy(options) {
+        const json = toJSON(options);
+        await root.navigator.clipboard.writeText(json);
+        return json;
+    }
+    function download(options) {
+        const json = toJSON(options);
+        const url = root.URL.createObjectURL(new Blob([json], {type: 'application/json'}));
+        const link = root.document.createElement('a');
+        link.href = url;
+        link.download = '1d20-character.json';
+        link.click();
+        root.setTimeout(() => root.URL.revokeObjectURL(url), 1000);
+        return json;
+    }
+    root.D20FoundryExporter = Object.freeze({format: FORMAT, version: VERSION, exportCharacter, toJSON, copy, download});
+})(globalThis.window ?? globalThis);
