@@ -6,6 +6,7 @@ import {additionalSpellRules, findSpellGrant, configureCharacterSpell, character
 import {customResourceFeatures} from './character-resources.js';
 import {characterSystemMajor, initialCharacterArmor, overrideCharacterArmor} from './character-compat.js';
 import {expandClassSpellLists} from './character-spell-lists.js';
+import {applyCharacterPortrait} from './character-portrait.js';
 export {characterImportIssues, characterActorSource, createPlutoniumCharacterAdapter};
 
 export function canPopulateCharacter(actor) {
@@ -24,8 +25,12 @@ export async function prepareCharacterImport(input, {adapter, makeActor = source
     adapter ??= createPlutoniumCharacterAdapter();
     const {data, classes, reference} = plan;
     const source = characterActorSource(data);
+    // Artwork must not participate in Actor validation or the character commit.
+    const portrait = data.state.portrait;
+    delete source.img;
     source._id = actorId ?? randomID();
     const notes = [...plan.diagnostics], owners = [], counts = {}, featureIds = new Map();
+    if (portrait) notes.push('Портрет буде встановлено окремо після збереження персонажа. Якщо завантаження або встановлення зображення недоступне, імпорт персонажа завершиться без нового портрета.');
     const customResources = customResourceFeatures(data.state, {randomID, notes});
     source.items.push(...customResources);
     if (customResources.length) {
@@ -250,7 +255,7 @@ export async function prepareCharacterImport(input, {adapter, makeActor = source
     notes.push('Вибори advancement для подальшого підвищення рівня потребують перевірки; початкові вибори конструктора збережені в прапорцях персонажа.');
     notes.push('Комірки й ліміти застосувань починають із повного запасу. Поточні HP і нотатки перенесено.');
     source.flags[MODULE_ID].characterImport.report = {counts, notes: unique(notes), abilityChoices: Object.fromEntries(abilityChoices)};
-    return {source, name: source.name, itemCount: source.items.length, counts, notes: unique(notes)};
+    return {source, portrait, name: source.name, itemCount: source.items.length, counts, notes: unique(notes)};
 }
 
 async function selectSpellAbility({label, choices}) {
@@ -304,10 +309,26 @@ export async function importCharacterExport(input, {actor = null, prepare = prep
             if (action !== 'apply') return null;
         }
         if (actor && (!canPopulateCharacter(actor) || JSON.stringify(actor.toObject()) !== initial)) throw new Error('Аркуш змінився під час підготовки. Повторіть вставляння.');
+        const portrait = prepared.portrait ?? prepared.source.img;
+        delete prepared.source.img;
+        // Preserve an existing portrait if the optional replacement fails.
+        if (actor && JSON.parse(initial).img) prepared.source.img = JSON.parse(initial).img;
         const result = actor ? await actor.importFromJSON(JSON.stringify(prepared.source)) : await CONFIG.Actor.documentClass.create(prepared.source, {renderSheet: false, keepId: true});
         if (!result) throw new Error('Foundry скасував збереження персонажа.');
         await result.sheet.render(true);
         ui.notifications.info(`1d20: ${prepared.name} — імпортовано ${prepared.itemCount} записів.`);
+        if (portrait) {
+            try { await applyCharacterPortrait(result, portrait); }
+            catch {
+                const note = 'Персонажа імпортовано, але портрет не встановлено. Перевірте дозвіл на завантаження, формат зображення та доступність сховища; портрет можна додати вручну.';
+                ui.notifications.warn(note);
+                const notes = unique([...array(prepared.notes), note]);
+                prepared.notes = notes;
+                // Even saving the warning must not turn a successful import into a failure.
+                try { await result.update({[`flags.${MODULE_ID}.characterImport.report.notes`]: notes}); }
+                catch { /* The notification above remains visible. */ }
+            }
+        }
         return result;
     } finally { importing = false; }
 }
